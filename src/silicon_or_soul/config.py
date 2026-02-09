@@ -12,28 +12,40 @@ SOUNDS_DIR = ROOT_DIR / "sounds"
 LOGS_DIR = ROOT_DIR / "logs"
 ASSETS_DIR = ROOT_DIR / "assets"
 
-# Resolution: 1920x1080 (HD) - pygame.SCALED handles 4K
+# ---------------------------------------------------------------------------
+# Display
+# ---------------------------------------------------------------------------
 WINDOW_SIZE = (1920, 1080)
 FPS = 60
 
+# ---------------------------------------------------------------------------
 # Game Timing
-CHOOSING_DURATION_SECONDS = 3.0
+# ---------------------------------------------------------------------------
+CHOOSING_DURATION_SECONDS = 3.5
 VOTING_TIMEOUT_SECONDS = 15.0
-PRE_REVEAL_DURATION_SECONDS = 2.0
+PRE_REVEAL_DURATION_SECONDS = 2.5
 REVEAL_DURATION_SECONDS = 5.0
 INTERMISSION_SECONDS = 2.0
 
+# ---------------------------------------------------------------------------
 # Animation Timing
+# ---------------------------------------------------------------------------
 SCORE_ANIM_DURATION = 0.8
-WINNER_HIGHLIGHT_DURATION = 2.5
-ROULETTE_TICK_INTERVAL_START = 0.05
-ROULETTE_TICK_INTERVAL_END = 0.4
+WINNER_HIGHLIGHT_DURATION = 4.0
+ROULETTE_TICK_INTERVAL_START = 0.04
+ROULETTE_TICK_INTERVAL_END = 0.35
 
+# ---------------------------------------------------------------------------
+# Audio
+# ---------------------------------------------------------------------------
 MUSIC_VOLUME = 0.75
 SFX_VOLUME = 0.9
 
 RECENT_TRACK_MEMORY = 3
 
+# ---------------------------------------------------------------------------
+# Players
+# ---------------------------------------------------------------------------
 PLAYER_CONFIG = [
     {"name": "Player 1", "keys": {"silicon": pygame.K_a, "soul": pygame.K_s}},
     {"name": "Player 2", "keys": {"silicon": pygame.K_d, "soul": pygame.K_f}},
@@ -52,32 +64,58 @@ SOUND_FILES = {
     "reveal": "reveal.wav",
     "win": "win.wav",
     "lose": "lose.wav",
-    # Optional extra sounds
     "tick": "tick.wav",
     "drumroll": "drumroll.wav",
 }
 
+# ---------------------------------------------------------------------------
+# Color Palette – Cyberpunk Neon
+# ---------------------------------------------------------------------------
 COLORS = {
-    # Cyberpunk Neon Palette
-    "background_top": (10, 10, 25),      # Deep Blue/Purple
-    "background_bottom": (0, 0, 10),     # Almost Black
-    "text": (240, 240, 255),             # Bright White-Blue
-    "muted": (100, 100, 140),            # Muted Blue-Grey
-    
+    # Background gradient
+    "bg_top": (8, 8, 30),
+    "bg_bottom": (2, 2, 12),
+
+    # Text
+    "text": (240, 240, 255),
+    "muted": (90, 90, 130),
+
     # Neon Accents
-    "silicon": (0, 255, 255),            # Cyan / Neon Blue
-    "soul": (255, 100, 0),               # Neon Orange
-    "winner": (50, 255, 50),             # Bright Neon Green
-    "warning": (255, 50, 80),            # Neon Red
-    
-    # UI Elements
-    "panel_bg": (20, 30, 40),            # Dark Blue-Grey (for glass effect base)
-    "panel_border": (80, 100, 120),      # Light Blue-Grey
-    "panel_glow": (0, 150, 255),         # Blue Glow
+    "silicon": (0, 220, 255),
+    "silicon_dim": (0, 80, 100),
+    "soul": (255, 100, 0),
+    "soul_dim": (100, 40, 0),
+    "winner": (50, 255, 80),
+    "loser": (255, 50, 80),
+    "warning": (255, 50, 80),
+
+    # UI panels
+    "panel_bg": (15, 20, 35),
+    "panel_border": (50, 70, 100),
+    "panel_glow": (0, 120, 255),
+
+    # Misc
+    "gold": (255, 215, 0),
+    "white": (255, 255, 255),
+    "black": (0, 0, 0),
 }
 
-FONTS = {
-    "primary": "Arial Rounded MT Bold",
-    "secondary": "Helvetica",
-    "fallback": "Arial",
-}
+# ---------------------------------------------------------------------------
+# Particles
+# ---------------------------------------------------------------------------
+PARTICLE_MAX = 300
+BG_STAR_COUNT = 80
+CONFETTI_BURST_COUNT = 120
+CONFETTI_COLORS = [
+    (255, 50, 80),
+    (0, 220, 255),
+    (255, 215, 0),
+    (50, 255, 80),
+    (255, 100, 0),
+    (180, 80, 255),
+]
+
+# ---------------------------------------------------------------------------
+# Fonts (tried in order, first match wins)
+# ---------------------------------------------------------------------------
+FONT_NAMES = ["Arial Rounded MT Bold", "Helvetica Neue", "Helvetica", "Arial"]
