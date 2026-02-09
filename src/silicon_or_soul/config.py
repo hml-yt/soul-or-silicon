@@ -22,10 +22,11 @@ FPS = 60
 # Game Timing
 # ---------------------------------------------------------------------------
 CHOOSING_DURATION_SECONDS = 3.5
-VOTING_TIMEOUT_SECONDS = 15.0
+VOTING_TIMEOUT_SECONDS = 50.0
 PRE_REVEAL_DURATION_SECONDS = 2.5
 REVEAL_DURATION_SECONDS = 5.0
 INTERMISSION_SECONDS = 2.0
+TOTAL_ROUNDS = 6
 
 # ---------------------------------------------------------------------------
 # Animation Timing
@@ -36,10 +37,21 @@ ROULETTE_TICK_INTERVAL_START = 0.04
 ROULETTE_TICK_INTERVAL_END = 0.35
 
 # ---------------------------------------------------------------------------
+# Scoring
+# ---------------------------------------------------------------------------
+SPEED_POINTS_MIN = 1
+SPEED_POINTS_MAX = 5
+SPEED_POINTS_EXP = 0.5
+WRONG_ANSWER_PENALTY = 1
+
+# ---------------------------------------------------------------------------
 # Audio
 # ---------------------------------------------------------------------------
 MUSIC_VOLUME = 0.75
 SFX_VOLUME = 0.9
+
+MUSIC_RANDOM_START = True
+MUSIC_SNIPPET_SECONDS = VOTING_TIMEOUT_SECONDS
 
 RECENT_TRACK_MEMORY = 3
 

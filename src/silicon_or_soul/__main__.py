@@ -1,6 +1,36 @@
 from __future__ import annotations
 
+import argparse
+import os
+from pathlib import Path
+import sys
 import time
+
+def _setup_sdl_env_for_console() -> None:
+    """
+    On Raspberry Pi OS Lite / console-only boots, SDL can pick a driver path that
+    expects EGL/GL. Prefer framebuffer console when present, and default to
+    software rendering.
+
+    IMPORTANT: env vars must be set before the first SDL video init.
+    """
+
+    under_desktop = bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+    if under_desktop:
+        return
+
+    # If the user already chose a driver, respect it.
+    if os.environ.get("SDL_VIDEODRIVER"):
+        os.environ.setdefault("SDL_RENDER_DRIVER", "software")
+        return
+
+    # Avoid EGL/GL renderer selection; keep it 2D/software. We intentionally
+    # don't force a particular SDL video driver here because some distro SDL
+    # builds omit `fbcon`. Driver selection/fallback happens in `_create_screen`.
+    os.environ.setdefault("SDL_RENDER_DRIVER", "software")
+
+
+_setup_sdl_env_for_console()
 
 import pygame
 
@@ -13,10 +43,101 @@ from .songs import SongLibrary
 from .ui import UI
 
 
+def _create_screen() -> pygame.Surface:
+    """
+    Create the main display surface with pragmatic fallbacks.
+
+    Some Linux/Wayland setups can throw `pygame.error: EGL not initialized` when
+    requesting `FULLSCREEN | SCALED`. We progressively degrade flags/sizing, and
+    as a last resort retry with the X11 video driver when available.
+    """
+
+    def try_modes() -> pygame.Surface | None:
+        attempts: list[tuple[tuple[int, int], int]] = [
+            (config.WINDOW_SIZE, pygame.FULLSCREEN | pygame.SCALED),
+            (config.WINDOW_SIZE, pygame.FULLSCREEN),
+            ((0, 0), pygame.FULLSCREEN),  # desktop resolution fullscreen
+            (config.WINDOW_SIZE, pygame.SCALED),
+            (config.WINDOW_SIZE, 0),
+        ]
+        last_error: pygame.error | None = None
+        for size, flags in attempts:
+            try:
+                return pygame.display.set_mode(size, flags)
+            except pygame.error as e:
+                last_error = e
+        if last_error is not None:
+            raise last_error
+        return None
+
+    try:
+        return try_modes()  # type: ignore[return-value]
+    except pygame.error:
+        # Linux console environments (e.g. Raspberry Pi OS Lite) may need an
+        # explicit SDL video driver choice, and some SDL builds omit drivers like
+        # `fbcon`. If we're not under X11/Wayland, try pragmatic fallbacks.
+        if not sys.platform.startswith("linux"):
+            raise
+        under_desktop = bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+        if under_desktop:
+            raise
+
+        candidates: list[str] = []
+        # Prefer KMS/DRM (most common on modern Pi images), then fbcon if present.
+        if Path("/dev/dri/card0").exists():
+            candidates.append("kmsdrm")
+        if Path("/dev/fb0").exists():
+            candidates.append("fbcon")
+        # Other optional backends.
+        candidates.extend(["directfb", "svgalib"])
+
+        current_driver = os.environ.get("SDL_VIDEODRIVER", "").lower()
+        last_error: pygame.error | None = None
+        for drv in candidates:
+            if current_driver == drv:
+                continue
+            try:
+                pygame.quit()
+                os.environ["SDL_VIDEODRIVER"] = drv
+                if drv == "fbcon":
+                    os.environ.setdefault("SDL_FBDEV", "/dev/fb0")
+                elif drv == "kmsdrm":
+                    os.environ.setdefault("SDL_KMSDRM_DEVICE", "/dev/dri/card0")
+                os.environ.setdefault("SDL_RENDER_DRIVER", "software")
+                pygame.init()
+                return try_modes()  # type: ignore[return-value]
+            except pygame.error as e:
+                last_error = e
+                continue
+
+        if last_error is not None:
+            raise last_error
+        raise
+
+
+def _parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(prog="silicon-or-soul")
+    parser.add_argument(
+        "--player-name",
+        action="append",
+        default=[],
+        help="Repeatable. Example: --player-name Alice --player-name Bob",
+    )
+    parser.add_argument(
+        "--player-names",
+        default="",
+        help='Comma-separated. Example: --player-names "Alice,Bob,Carol"',
+    )
+    return parser.parse_args(argv)
+
+
 def main() -> None:
+    args = _parse_args(sys.argv[1:])
+
+    # Note: `_create_screen()` may need to pick/initialize an SDL video driver on
+    # console-only Linux systems, so we do it before initializing everything.
+    screen = _create_screen()
     pygame.init()
-    # Use SCALED for resolution independence and FULLSCREEN for TV display
-    screen = pygame.display.set_mode(config.WINDOW_SIZE, pygame.FULLSCREEN | pygame.SCALED)
     pygame.display.set_caption("Silicon Or Soul")
     clock = pygame.time.Clock()
 
@@ -25,6 +146,13 @@ def main() -> None:
     library.scan()
     logger = RoundLogger()
     game = Game(audio=audio, library=library, logger=logger)
+    player_names: list[str] = []
+    if args.player_name:
+        player_names.extend(args.player_name)
+    if args.player_names:
+        player_names.extend([p.strip() for p in args.player_names.split(",")])
+    if player_names:
+        game.set_player_names(player_names)
     ui = UI(screen)
     input_manager = InputManager()
 

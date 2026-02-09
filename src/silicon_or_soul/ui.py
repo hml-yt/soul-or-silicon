@@ -295,6 +295,9 @@ class UI:
                 self._roulette_last_tick = 0.0
                 self._confetti_fired = False
                 self._vote_particle_state = {}
+            elif game.state == "GAME_OVER":
+                self._shake_amount = 0.0
+                self._confetti_fired = False
             self._prev_state = game.state
 
         # Vote lock-in particles
@@ -318,7 +321,7 @@ class UI:
                              config.COLORS["text"], self.W // 2, 45, glow_layers=2)
 
         # Round badge
-        round_text = f"ROUND {game.round_index}"
+        round_text = "FINAL" if game.state == "GAME_OVER" else f"ROUND {game.round_index}"
         rt_surf = self.font_small.render(round_text, True, config.COLORS["gold"])
         self.screen.blit(rt_surf, rt_surf.get_rect(midright=(self.W - 60, 45)))
 
@@ -353,6 +356,8 @@ class UI:
             self._draw_pre_reveal(game, now, cx, cy)
         elif game.state in ("REVEAL", "INTERMISSION"):
             self._draw_reveal(game, now, cx, cy)
+        elif game.state == "GAME_OVER":
+            self._draw_game_over(game, now, cx, cy)
 
     def _draw_choosing(self, game: Game, now: float, cx: int, cy: int) -> None:
         # Roulette text cycling
@@ -477,6 +482,21 @@ class UI:
                 self._draw_glow_text("NOBODY GOT IT!", self.font_med,
                                      config.COLORS["loser"], cx, cy + 90, glow_layers=2)
 
+    def _draw_game_over(self, game: Game, now: float, cx: int, cy: int) -> None:
+        champions = [p for p in game.players if p.is_champion]
+        is_tie = len(champions) != 1
+        title = "GAME OVER"
+        banner = "TIE" if is_tie else "WINNER"
+        names = " & ".join(p.name for p in champions) if champions else "NO WINNER"
+
+        self._draw_glow_text(title, self.font_huge, config.COLORS["text"], cx, cy - 40, glow_layers=3)
+        self._draw_glow_text(banner, self.font_large, config.COLORS["winner"], cx, cy + 80, glow_layers=2)
+        self._draw_glow_text(names, self.font_med, config.COLORS["gold"], cx, cy + 150, glow_layers=1)
+
+        hint = "PRESS N TO RESTART"
+        hint_surf = self.font_small.render(hint, True, config.COLORS["muted"])
+        self.screen.blit(hint_surf, hint_surf.get_rect(center=(cx, cy + 220)))
+
     # ------------------------------------------------------------------
     # Player cards
     # ------------------------------------------------------------------
@@ -499,7 +519,11 @@ class UI:
         border_color = config.COLORS["panel_border"]
         glow_color = None
 
-        if game.state == "REVEAL" and player.is_winner:
+        if game.state == "GAME_OVER" and player.is_champion:
+            pulse = _pulse(now, 3.0, 0.5, 1.0)
+            glow_color = tuple(int(c * pulse) for c in config.COLORS["winner"][:3])
+            border_color = glow_color
+        elif game.state == "REVEAL" and player.is_winner:
             elapsed = now - game.reveal_started_at
             if elapsed <= config.WINNER_HIGHLIGHT_DURATION:
                 pulse = _pulse(now, 6.0, 0.5, 1.0)

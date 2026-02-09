@@ -15,11 +15,14 @@ class Player:
     name: str
     score: int = 0
     vote: str | None = None
+    vote_time: float | None = None
+    points_delta: int = 0
     display_score: float = 0.0
     score_anim_start: float = 0.0
     score_anim_from: float = 0.0
     score_anim_to: float = 0.0
     is_winner: bool = False
+    is_champion: bool = False
 
 
 class Game:
@@ -43,6 +46,17 @@ class Game:
 
         self.paused = False
         self.pause_started_at = 0.0
+
+    def set_player_names(self, names: list[str]) -> None:
+        """
+        Update player display names (in order).
+
+        - Extra provided names are ignored.
+        - Blank/whitespace-only names are ignored (default kept).
+        """
+        cleaned: list[str] = [n.strip() for n in names if n.strip()]
+        for i, name in enumerate(cleaned[: len(self.players)]):
+            self.players[i].name = name
 
     def start_round(self, now: float) -> None:
         self._reset_round_state()
@@ -88,6 +102,7 @@ class Game:
         if player.vote is not None:
             return
         player.vote = choice
+        player.vote_time = now
         self.audio.play_sfx("lock_in")
 
     def update(self, now: float) -> None:
@@ -108,7 +123,12 @@ class Game:
                 self.state = "INTERMISSION"
         elif self.state == "INTERMISSION":
             if now >= self.intermission_end_time:
-                self.start_round(now)
+                if config.TOTAL_ROUNDS > 0 and self.round_index >= config.TOTAL_ROUNDS:
+                    self._end_match()
+                else:
+                    self.start_round(now)
+        elif self.state == "GAME_OVER":
+            return
 
     def toggle_pause(self, now: float) -> None:
         if self.state == "ERROR":
@@ -130,6 +150,9 @@ class Game:
 
     def skip_round(self, now: float) -> None:
         if self.state == "ERROR":
+            return
+        if self.state == "GAME_OVER":
+            self._reset_match(now)
             return
         self.audio.stop_music()
         self.start_round(now)
@@ -161,11 +184,20 @@ class Game:
         for player in self.players:
             player.is_winner = player.vote == correct
             if player.is_winner:
-                player.score += 1
+                points = self._calculate_speed_points(player.vote_time)
+                player.points_delta = points
+                player.score += points
+                winners.append(player)
+            elif player.vote is not None:
+                player.points_delta = -config.WRONG_ANSWER_PENALTY
+                player.score += player.points_delta
+            else:
+                player.points_delta = 0
+
+            if player.points_delta != 0:
                 player.score_anim_start = now
                 player.score_anim_from = player.display_score
                 player.score_anim_to = float(player.score)
-                winners.append(player)
 
         if winners:
             self.audio.play_sfx("win")
@@ -186,7 +218,12 @@ class Game:
                 {
                     "name": player.name,
                     "vote": player.vote,
+                    "reaction_time_seconds": (
+                        player.vote_time - self.voting_open_time
+                        if player.vote_time is not None else None
+                    ),
                     "correct": player.vote == correct if player.vote else False,
+                    "points_delta": player.points_delta,
                     "score_after": player.score,
                 }
                 for player in self.players
@@ -194,9 +231,49 @@ class Game:
         }
         self.logger.log_round(payload)
 
+    def _end_match(self) -> None:
+        top_score = max((p.score for p in self.players), default=0)
+        for player in self.players:
+            player.is_champion = player.score == top_score
+        self.state = "GAME_OVER"
+
+    def _reset_match(self, now: float) -> None:
+        for player in self.players:
+            player.score = 0
+            player.display_score = 0.0
+            player.score_anim_start = 0.0
+            player.score_anim_from = 0.0
+            player.score_anim_to = 0.0
+            player.is_champion = False
+            player.is_winner = False
+            player.vote = None
+            player.vote_time = None
+            player.points_delta = 0
+        self.round_index = 0
+        self.current_song = None
+        self.state = "INIT"
+        self.audio.stop_music()
+        self.start_round(now)
+
+    def _calculate_speed_points(self, vote_time: float | None) -> int:
+        if vote_time is None:
+            return 0
+        if config.VOTING_TIMEOUT_SECONDS <= 0:
+            return config.SPEED_POINTS_MIN
+        elapsed = vote_time - self.voting_open_time
+        elapsed = max(0.0, min(config.VOTING_TIMEOUT_SECONDS, elapsed))
+        progress = elapsed / config.VOTING_TIMEOUT_SECONDS
+        curved = 1.0 - (progress ** config.SPEED_POINTS_EXP)
+        points = config.SPEED_POINTS_MIN + (
+            (config.SPEED_POINTS_MAX - config.SPEED_POINTS_MIN) * curved
+        )
+        return int(round(points))
+
     def _reset_round_state(self) -> None:
         for player in self.players:
             player.vote = None
+            player.vote_time = None
+            player.points_delta = 0
             player.is_winner = False
             if player.display_score == 0.0 and player.score > 0:
                 player.display_score = float(player.score)
