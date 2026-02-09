@@ -414,6 +414,13 @@ class UI:
         bar_color_b = config.COLORS["warning"]
         self._draw_timer_bar(progress, cy + 85, bar_color_a, bar_color_b)
 
+        # Current points value (if correct right now)
+        worth = game.current_speed_points(now)
+        worth_label = self.font_small.render("WORTH", True, config.COLORS["muted"])
+        self.screen.blit(worth_label, worth_label.get_rect(center=(cx, cy + 135)))
+        worth_value = self.font_med.render(f"{worth}", True, config.COLORS["text"])
+        self.screen.blit(worth_value, worth_value.get_rect(center=(cx, cy + 180)))
+
     def _draw_pre_reveal(self, game: Game, now: float, cx: int, cy: int) -> None:
         elapsed = now - game.pre_reveal_started_at
         progress = min(1.0, elapsed / config.PRE_REVEAL_DURATION_SECONDS)
@@ -556,6 +563,15 @@ class UI:
         # Vote indicators (center)
         center_x = card_x + card_w // 2
         self._draw_vote_indicators(player, center_x, y + card_h // 2, game, now)
+
+        # Locked-in points (for correct answers) during voting
+        if game.state == "VOTING" and player.vote_time is not None:
+            locked_points = game.speed_points_for_vote_time(player.vote_time)
+            locked_x = card_x + card_w - 260
+            locked_label = self.font_tiny.render("LOCKED", True, config.COLORS["muted"])
+            self.screen.blit(locked_label, locked_label.get_rect(center=(locked_x, y + 30)))
+            locked_value = self.font_small.render(f"{locked_points}", True, config.COLORS["text"])
+            self.screen.blit(locked_value, locked_value.get_rect(center=(locked_x, y + 70)))
 
         # Score (right side)
         display_score = self._get_display_score(player, now)

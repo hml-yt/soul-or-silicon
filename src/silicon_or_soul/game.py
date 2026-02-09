@@ -269,6 +269,14 @@ class Game:
         )
         return int(round(points))
 
+    def current_speed_points(self, now: float) -> int:
+        """Points awarded if a player is correct right now."""
+        return self._calculate_speed_points(now)
+
+    def speed_points_for_vote_time(self, vote_time: float | None) -> int:
+        """Points awarded for a specific vote time."""
+        return self._calculate_speed_points(vote_time)
+
     def _reset_round_state(self) -> None:
         for player in self.players:
             player.vote = None
