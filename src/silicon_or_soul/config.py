@@ -10,16 +10,24 @@ SONGS_AI_DIR = ROOT_DIR / "songs" / "ai"
 SONGS_HUMAN_DIR = ROOT_DIR / "songs" / "human"
 SOUNDS_DIR = ROOT_DIR / "sounds"
 LOGS_DIR = ROOT_DIR / "logs"
+ASSETS_DIR = ROOT_DIR / "assets"
 
-WINDOW_SIZE = (800, 480)
+# Resolution: 1920x1080 (HD) - pygame.SCALED handles 4K
+WINDOW_SIZE = (1920, 1080)
 FPS = 60
 
+# Game Timing
+CHOOSING_DURATION_SECONDS = 3.0
 VOTING_TIMEOUT_SECONDS = 15.0
-REVEAL_DURATION_SECONDS = 4.0
+PRE_REVEAL_DURATION_SECONDS = 2.0
+REVEAL_DURATION_SECONDS = 5.0
 INTERMISSION_SECONDS = 2.0
 
+# Animation Timing
 SCORE_ANIM_DURATION = 0.8
 WINNER_HIGHLIGHT_DURATION = 2.5
+ROULETTE_TICK_INTERVAL_START = 0.05
+ROULETTE_TICK_INTERVAL_END = 0.4
 
 MUSIC_VOLUME = 0.75
 SFX_VOLUME = 0.9
@@ -44,16 +52,32 @@ SOUND_FILES = {
     "reveal": "reveal.wav",
     "win": "win.wav",
     "lose": "lose.wav",
+    # Optional extra sounds
+    "tick": "tick.wav",
+    "drumroll": "drumroll.wav",
 }
 
 COLORS = {
-    "background": (24, 24, 24),
-    "text": (235, 235, 235),
-    "muted": (140, 140, 140),
-    "silicon": (0, 200, 255),
-    "soul": (255, 140, 0),
-    "winner": (120, 255, 120),
-    "warning": (255, 80, 80),
-    "panel": (40, 40, 40),
+    # Cyberpunk Neon Palette
+    "background_top": (10, 10, 25),      # Deep Blue/Purple
+    "background_bottom": (0, 0, 10),     # Almost Black
+    "text": (240, 240, 255),             # Bright White-Blue
+    "muted": (100, 100, 140),            # Muted Blue-Grey
+    
+    # Neon Accents
+    "silicon": (0, 255, 255),            # Cyan / Neon Blue
+    "soul": (255, 100, 0),               # Neon Orange
+    "winner": (50, 255, 50),             # Bright Neon Green
+    "warning": (255, 50, 80),            # Neon Red
+    
+    # UI Elements
+    "panel_bg": (20, 30, 40),            # Dark Blue-Grey (for glass effect base)
+    "panel_border": (80, 100, 120),      # Light Blue-Grey
+    "panel_glow": (0, 150, 255),         # Blue Glow
 }
 
+FONTS = {
+    "primary": "Arial Rounded MT Bold",
+    "secondary": "Helvetica",
+    "fallback": "Arial",
+}

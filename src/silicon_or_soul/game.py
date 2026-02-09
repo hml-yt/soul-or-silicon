@@ -35,6 +35,8 @@ class Game:
         self.error_message: str | None = None
 
         self.voting_open_time = 0.0
+        self.choosing_started_at = 0.0
+        self.pre_reveal_started_at = 0.0
         self.reveal_end_time = 0.0
         self.intermission_end_time = 0.0
         self.reveal_started_at = 0.0
@@ -48,17 +50,30 @@ class Game:
 
         failed_paths: set[Path] = set()
         song = self._pick_valid_song(failed_paths)
+        # Verify we can find a valid song
         while song is not None:
-            if self.audio.play_music(song.path):
-                self.current_song = song
-                break
-            failed_paths.add(song.path)
-            song = self._pick_valid_song(failed_paths)
+             # Just check existence, don't play yet
+             if song.path.exists():
+                 self.current_song = song
+                 break
+             failed_paths.add(song.path)
+             song = self._pick_valid_song(failed_paths)
 
         if self.current_song is None:
             self.state = "ERROR"
             self.error_message = "Failed to load any songs. Check mp3 support."
             return
+
+        # Start CHOOSING (Roulette)
+        self.state = "CHOOSING"
+        self.choosing_started_at = now
+
+    def _start_voting(self, now: float) -> None:
+        if self.current_song:
+             # Try to play the selected song
+             if not self.audio.play_music(self.current_song.path):
+                 # Fallback if playback fails (should be rare if file exists)
+                 print(f"Failed to play {self.current_song.path}")
 
         self.audio.play_sfx("start")
         self.state = "VOTING"
@@ -79,9 +94,15 @@ class Game:
         if self.state == "ERROR" or self.paused:
             return
 
-        if self.state == "VOTING":
+        if self.state == "CHOOSING":
+            if (now - self.choosing_started_at) >= config.CHOOSING_DURATION_SECONDS:
+                self._start_voting(now)
+        elif self.state == "VOTING":
             if self._all_voted() or self._voting_timed_out(now):
-                self._reveal(now)
+                self._start_pre_reveal(now)
+        elif self.state == "PRE_REVEAL":
+            if (now - self.pre_reveal_started_at) >= config.PRE_REVEAL_DURATION_SECONDS:
+                self._perform_reveal(now)
         elif self.state == "REVEAL":
             if now >= self.reveal_end_time:
                 self.state = "INTERMISSION"
@@ -100,7 +121,9 @@ class Game:
 
         self.paused = False
         pause_delta = now - self.pause_started_at
+        self.choosing_started_at += pause_delta
         self.voting_open_time += pause_delta
+        self.pre_reveal_started_at += pause_delta
         self.reveal_end_time += pause_delta
         self.intermission_end_time += pause_delta
         self.audio.resume_music()
@@ -117,7 +140,13 @@ class Game:
     def _voting_timed_out(self, now: float) -> bool:
         return (now - self.voting_open_time) >= config.VOTING_TIMEOUT_SECONDS
 
-    def _reveal(self, now: float) -> None:
+    def _start_pre_reveal(self, now: float) -> None:
+        self.state = "PRE_REVEAL"
+        self.pre_reveal_started_at = now
+        self.audio.stop_music()
+        self.audio.play_sfx("drumroll")
+
+    def _perform_reveal(self, now: float) -> None:
         if self.current_song is None:
             return
         self.state = "REVEAL"
@@ -126,7 +155,6 @@ class Game:
         self.intermission_end_time = self.reveal_end_time + config.INTERMISSION_SECONDS
 
         correct = self.current_song.category
-        self.audio.stop_music()
         self.audio.play_sfx("reveal")
 
         winners = []

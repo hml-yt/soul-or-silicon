@@ -15,7 +15,8 @@ from .ui import UI
 
 def main() -> None:
     pygame.init()
-    screen = pygame.display.set_mode(config.WINDOW_SIZE)
+    # Use SCALED for resolution independence and FULLSCREEN for TV display
+    screen = pygame.display.set_mode(config.WINDOW_SIZE, pygame.FULLSCREEN | pygame.SCALED)
     pygame.display.set_caption("Silicon Or Soul")
     clock = pygame.time.Clock()
 
