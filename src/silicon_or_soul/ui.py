@@ -113,6 +113,8 @@ class UI:
         # Track state changes for particle bursts
         self._prev_state = ""
         self._confetti_fired = False
+        self._champion_confetti_fired = False
+        self._champion_drizzle_time = 0.0
         self._vote_particle_state: dict[int, bool] = {}
 
     # ------------------------------------------------------------------
@@ -296,8 +298,10 @@ class UI:
                 self._confetti_fired = False
                 self._vote_particle_state = {}
             elif game.state == "GAME_OVER":
-                self._shake_amount = 0.0
+                self._shake_amount = 6.0
                 self._confetti_fired = False
+                self._champion_confetti_fired = False
+                self._champion_drizzle_time = 0.0
             self._prev_state = game.state
 
         # Vote lock-in particles
@@ -490,19 +494,245 @@ class UI:
                                      config.COLORS["loser"], cx, cy + 90, glow_layers=2)
 
     def _draw_game_over(self, game: Game, now: float, cx: int, cy: int) -> None:
-        champions = [p for p in game.players if p.is_champion]
+        elapsed = now - game.game_over_started_at
+
+        # Sort players by score descending -> [1st, 2nd, 3rd, ...]
+        ranked = sorted(game.players, key=lambda p: p.score, reverse=True)
+
+        # --- Phase 0: Blackout + "GAME OVER" title ---
+        self._draw_pedestal_blackout(elapsed, cx)
+
+        # --- Phase 1: Pedestal rise ---
+        if elapsed >= config.PEDESTAL_BLACKOUT_END:
+            self._draw_pedestals(ranked, elapsed, cx, now)
+
+        # --- Phase 2: Score reveal ---
+        if elapsed >= config.PEDESTAL_RISE_END:
+            self._draw_pedestal_scores(ranked, elapsed, cx, now)
+
+        # --- Phase 3: Champion crown ---
+        if elapsed >= config.PEDESTAL_SCORE_END:
+            self._draw_champion_crown(ranked, elapsed, cx, now, game)
+
+        # --- Phase 4: Idle ---
+        if elapsed >= config.PEDESTAL_CROWN_END:
+            self._draw_pedestal_hint(elapsed, cx)
+            # Ongoing confetti drizzle
+            if now - self._champion_drizzle_time > 0.15:
+                self._champion_drizzle_time = now
+                self.particles.emit_champion_drizzle(self.W)
+
+    # ------------------------------------------------------------------
+    # Pedestal sub-draws
+    # ------------------------------------------------------------------
+
+    def _get_pedestal_layout(self, ranked: list[Player], cx: int) -> list[dict]:
+        """Return layout info for up to 3 pedestals in [2nd, 1st, 3rd] order."""
+        n = min(len(ranked), 3)
+        heights = config.PEDESTAL_HEIGHTS
+        widths = config.PEDESTAL_WIDTHS
+        gap = config.PEDESTAL_GAP
+        bottom_y = self.H - 40  # leave a small margin at bottom
+
+        # Total width of all pedestals + gaps
+        total_w = sum(widths[:n]) + gap * (n - 1)
+        # Center the group
+        start_x = cx - total_w // 2
+
+        # Build layout in display order: 2nd, 1st, 3rd
+        if n == 1:
+            display_order = [0]  # only 1st
+        elif n == 2:
+            display_order = [1, 0]  # 2nd, 1st
+        else:
+            display_order = [1, 0, 2]  # 2nd, 1st, 3rd
+
+        layouts: list[dict] = []
+        cur_x = start_x
+        for rank in display_order:
+            w = widths[rank]
+            h = heights[rank]
+            layouts.append({
+                "rank": rank,
+                "player": ranked[rank],
+                "x": cur_x,
+                "w": w,
+                "h": h,
+                "bottom_y": bottom_y,
+                "top_y": bottom_y - h,
+            })
+            cur_x += w + gap
+
+        return layouts
+
+    def _draw_pedestal_blackout(self, elapsed: float, cx: int) -> None:
+        # Fade-in dim overlay
+        fade_t = min(1.0, elapsed / config.PEDESTAL_BLACKOUT_END)
+        alpha = int(120 * _ease_out_cubic(fade_t))
+        overlay = pygame.Surface(config.WINDOW_SIZE, pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, alpha))
+        self.screen.blit(overlay, (0, 0))
+
+        # "GAME OVER" elastic entrance
+        t = min(1.0, elapsed / 0.8)
+        scale = 1.0 + (1.0 - _ease_out_elastic(t)) * 0.6
+        font_size = int(140 * scale)
+        font = _get_font(min(font_size, 240))
+
+        # Slide down from above
+        slide_t = min(1.0, elapsed / 0.6)
+        y_offset = int((1.0 - _ease_out_cubic(slide_t)) * -120)
+        title_y = 200 + y_offset
+
+        self._draw_glow_text("GAME OVER", font, config.COLORS["text"],
+                             cx, title_y, glow_layers=4)
+
+    def _draw_pedestals(self, ranked: list[Player], elapsed: float,
+                        cx: int, now: float) -> None:
+        layouts = self._get_pedestal_layout(ranked, cx)
+
+        rise_elapsed = elapsed - config.PEDESTAL_BLACKOUT_END
+        rise_duration = config.PEDESTAL_RISE_END - config.PEDESTAL_BLACKOUT_END
+
+        for i, lay in enumerate(layouts):
+            # Stagger each pedestal slightly
+            delay = i * 0.15
+            t = max(0.0, min(1.0, (rise_elapsed - delay) / (rise_duration - delay * len(layouts) * 0.3)))
+            rise_progress = _ease_out_cubic(t)
+
+            # Pedestal rises from bottom
+            full_h = lay["h"]
+            current_h = int(full_h * rise_progress)
+            if current_h <= 0:
+                continue
+
+            rect_x = lay["x"]
+            rect_w = lay["w"]
+            rect_y = lay["bottom_y"] - current_h
+            rect = pygame.Rect(rect_x, rect_y, rect_w, current_h)
+
+            # Determine color based on rank
+            rank = lay["rank"]
+            if rank == 0:
+                border = config.COLORS["gold"]
+            elif rank == 1:
+                border = config.COLORS["panel_glow"]
+            else:
+                border = config.COLORS["panel_border"]
+
+            # Champion glow during crown phase
+            glow = None
+            if rank == 0 and elapsed >= config.PEDESTAL_SCORE_END:
+                pulse = _pulse(now, 3.0, 0.4, 1.0)
+                glow = tuple(int(c * pulse) for c in config.COLORS["gold"][:3])
+
+            self._draw_glass_panel(rect, border, glow, alpha=200)
+
+            # Rank label inside pedestal (always visible once risen)
+            rank_labels = ["1ST", "2ND", "3RD"]
+            if current_h > 30 and rank < 3:
+                rank_text = rank_labels[rank]
+                rank_color = config.COLORS["gold"] if rank == 0 else config.COLORS["muted"]
+                rank_surf = self.font_tiny.render(rank_text, True, rank_color)
+                self.screen.blit(rank_surf,
+                                 rank_surf.get_rect(center=(rect_x + rect_w // 2,
+                                                            rect_y + 25)))
+
+    def _draw_pedestal_scores(self, ranked: list[Player], elapsed: float,
+                              cx: int, now: float) -> None:
+        layouts = self._get_pedestal_layout(ranked, cx)
+
+        score_elapsed = elapsed - config.PEDESTAL_RISE_END
+        score_duration = config.PEDESTAL_SCORE_END - config.PEDESTAL_RISE_END
+
+        for i, lay in enumerate(layouts):
+            rank = lay["rank"]
+            player = lay["player"]
+            pcx = lay["x"] + lay["w"] // 2
+            top_y = lay["top_y"]
+
+            # Fade in (staggered)
+            delay = i * 0.2
+            alpha_t = max(0.0, min(1.0, (score_elapsed - delay) / 0.5))
+            alpha = int(255 * _ease_out_cubic(alpha_t))
+            if alpha < 5:
+                continue
+
+            # Player name above pedestal
+            name_color = config.COLORS["text"]
+            name_surf = self.font_med.render(player.name, True, name_color)
+            name_surf.set_alpha(alpha)
+            self.screen.blit(name_surf,
+                             name_surf.get_rect(center=(pcx, top_y - 50)))
+
+            # Animated score counter
+            count_t = max(0.0, min(1.0, (score_elapsed - delay) / score_duration))
+            count_progress = _ease_out_cubic(count_t)
+            display_val = int(player.score * count_progress)
+
+            score_color = config.COLORS["gold"] if rank == 0 else config.COLORS["text"]
+            score_font = self.font_large if rank == 0 else self.font_med
+            score_surf = score_font.render(str(display_val), True, score_color)
+            score_surf.set_alpha(alpha)
+            self.screen.blit(score_surf,
+                             score_surf.get_rect(center=(pcx, top_y + 60)))
+
+    def _draw_champion_crown(self, ranked: list[Player], elapsed: float,
+                             cx: int, now: float, game: Game) -> None:
+        if not ranked:
+            return
+
+        crown_elapsed = elapsed - config.PEDESTAL_SCORE_END
+        crown_duration = config.PEDESTAL_CROWN_END - config.PEDESTAL_SCORE_END
+
+        layouts = self._get_pedestal_layout(ranked, cx)
+        # Find the 1st-place pedestal
+        first_layout = None
+        for lay in layouts:
+            if lay["rank"] == 0:
+                first_layout = lay
+                break
+        if first_layout is None:
+            return
+
+        champion = first_layout["player"]
+        pcx = first_layout["x"] + first_layout["w"] // 2
+        top_y = first_layout["top_y"]
+
+        # Check for tie
+        champions = [p for p in ranked if p.is_champion]
         is_tie = len(champions) != 1
-        title = "GAME OVER"
-        banner = "TIE" if is_tie else "WINNER"
-        names = " & ".join(p.name for p in champions) if champions else "NO WINNER"
+        crown_text = "TIE!" if is_tie else "CHAMPION"
 
-        self._draw_glow_text(title, self.font_huge, config.COLORS["text"], cx, cy - 40, glow_layers=3)
-        self._draw_glow_text(banner, self.font_large, config.COLORS["winner"], cx, cy + 80, glow_layers=2)
-        self._draw_glow_text(names, self.font_med, config.COLORS["gold"], cx, cy + 150, glow_layers=1)
+        # Elastic scale-in
+        t = min(1.0, crown_elapsed / 0.7)
+        scale = 1.0 + (1.0 - _ease_out_elastic(t)) * 0.8
+        font_size = int(100 * scale)
+        crown_font = _get_font(min(font_size, 180))
 
-        hint = "PRESS N TO RESTART"
-        hint_surf = self.font_small.render(hint, True, config.COLORS["muted"])
-        self.screen.blit(hint_surf, hint_surf.get_rect(center=(cx, cy + 220)))
+        # Position above the 1st-place pedestal
+        crown_y = top_y - 130
+
+        self._draw_glow_text(crown_text, crown_font, config.COLORS["gold"],
+                             cx, crown_y, glow_layers=5)
+
+        # Fire champion confetti + triumph SFX once
+        if not self._champion_confetti_fired:
+            self._champion_confetti_fired = True
+            self.particles.emit_champion_burst(pcx, top_y)
+            self._shake_amount = 14.0
+            game.audio.play_sfx("triumph")
+
+    def _draw_pedestal_hint(self, elapsed: float, cx: int) -> None:
+        hint_elapsed = elapsed - config.PEDESTAL_CROWN_END
+        alpha = min(255, int(hint_elapsed / 0.8 * 255))
+        if alpha < 5:
+            return
+        hint_surf = self.font_small.render("PRESS N TO RESTART", True,
+                                           config.COLORS["muted"])
+        hint_surf.set_alpha(alpha)
+        self.screen.blit(hint_surf,
+                         hint_surf.get_rect(center=(cx, self.H - 50)))
 
     # ------------------------------------------------------------------
     # Player cards
@@ -510,6 +740,9 @@ class UI:
 
     def _draw_players(self, game: Game, now: float,
                       shake_x: float, shake_y: float) -> None:
+        if game.state == "GAME_OVER":
+            return  # pedestal animation takes over the full screen
+
         start_y = 540
         gap = 155
 

@@ -37,10 +37,21 @@ ROULETTE_TICK_INTERVAL_START = 0.04
 ROULETTE_TICK_INTERVAL_END = 0.35
 
 # ---------------------------------------------------------------------------
+# Champion Pedestal Animation
+# ---------------------------------------------------------------------------
+PEDESTAL_BLACKOUT_END = 1.2
+PEDESTAL_RISE_END = 3.0
+PEDESTAL_SCORE_END = 5.0
+PEDESTAL_CROWN_END = 6.5
+PEDESTAL_HEIGHTS = (350, 250, 200)   # 1st, 2nd, 3rd (pixels)
+PEDESTAL_WIDTHS = (340, 300, 300)    # 1st, 2nd, 3rd (pixels)
+PEDESTAL_GAP = 80                    # gap between podiums
+
+# ---------------------------------------------------------------------------
 # Scoring
 # ---------------------------------------------------------------------------
 SPEED_POINTS_MIN = 1
-SPEED_POINTS_MAX = 5
+SPEED_POINTS_MAX = 3
 SPEED_POINTS_EXP = 0.5
 WRONG_ANSWER_PENALTY = 1
 
@@ -93,6 +104,7 @@ SOUND_FILES = {
     "lose": "lose.wav",
     "tick": "tick.wav",
     "drumroll": "drumroll.wav",
+    "triumph": "triumph.wav",
 }
 
 # ---------------------------------------------------------------------------

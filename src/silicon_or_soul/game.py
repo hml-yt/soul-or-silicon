@@ -44,6 +44,8 @@ class Game:
         self.intermission_end_time = 0.0
         self.reveal_started_at = 0.0
 
+        self.game_over_started_at = 0.0
+
         self.paused = False
         self.pause_started_at = 0.0
 
@@ -124,7 +126,7 @@ class Game:
         elif self.state == "INTERMISSION":
             if now >= self.intermission_end_time:
                 if config.TOTAL_ROUNDS > 0 and self.round_index >= config.TOTAL_ROUNDS:
-                    self._end_match()
+                    self._end_match(now)
                 else:
                     self.start_round(now)
         elif self.state == "GAME_OVER":
@@ -231,10 +233,11 @@ class Game:
         }
         self.logger.log_round(payload)
 
-    def _end_match(self) -> None:
+    def _end_match(self, now: float) -> None:
         top_score = max((p.score for p in self.players), default=0)
         for player in self.players:
             player.is_champion = player.score == top_score
+        self.game_over_started_at = now
         self.state = "GAME_OVER"
 
     def _reset_match(self, now: float) -> None:

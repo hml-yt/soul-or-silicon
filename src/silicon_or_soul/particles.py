@@ -112,6 +112,56 @@ class ParticleSystem:
                 kind="spark",
             ))
 
+    def emit_champion_burst(self, cx: float, cy: float, count: int = 180) -> None:
+        """Dramatic upward confetti fountain for the champion reveal."""
+        champion_colors = [
+            (255, 215, 0),    # gold
+            (255, 180, 0),    # amber
+            (50, 255, 80),    # winner green
+            (255, 255, 200),  # bright white-gold
+            (255, 100, 0),    # orange
+        ]
+        for _ in range(count):
+            # Biased upward
+            angle = random.uniform(-math.pi * 0.85, -math.pi * 0.15)
+            speed = random.uniform(300, 1000)
+            self.particles.append(Particle(
+                x=cx + random.uniform(-40, 40),
+                y=cy + random.uniform(-10, 10),
+                vx=math.cos(angle) * speed,
+                vy=math.sin(angle) * speed - random.uniform(150, 400),
+                life=random.uniform(2.0, 4.5),
+                max_life=4.5,
+                color=random.choice(champion_colors),
+                size=random.uniform(7, 16),
+                gravity=350,
+                drag=0.97,
+                kind="confetti",
+            ))
+
+    def emit_champion_drizzle(self, screen_w: float) -> None:
+        """Gentle ongoing confetti drizzle from the top of the screen."""
+        champion_colors = [
+            (255, 215, 0),
+            (50, 255, 80),
+            (255, 180, 0),
+            (255, 255, 200),
+        ]
+        for _ in range(3):
+            self.particles.append(Particle(
+                x=random.uniform(0, screen_w),
+                y=random.uniform(-20, 0),
+                vx=random.uniform(-30, 30),
+                vy=random.uniform(40, 120),
+                life=random.uniform(2.0, 4.0),
+                max_life=4.0,
+                color=random.choice(champion_colors),
+                size=random.uniform(4, 10),
+                gravity=60,
+                drag=0.99,
+                kind="confetti",
+            ))
+
     # --- draw helpers ---
 
     @staticmethod
