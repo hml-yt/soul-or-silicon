@@ -36,6 +36,10 @@ import pygame
 
 from . import config
 from .audio import AudioManager
+try:
+    from .controllers import ControllerManager
+except Exception:  # pragma: no cover - optional hardware dependency
+    ControllerManager = None  # type: ignore[assignment]
 from .game import Game
 from .input import HostAction, InputManager, VoteAction
 from .logging_jsonl import RoundLogger
@@ -155,6 +159,12 @@ def main() -> None:
         game.set_player_names(player_names)
     ui = UI(screen)
     input_manager = InputManager()
+    controller_manager = None
+    if config.CONTROLLERS_ENABLED and ControllerManager is not None:
+        try:
+            controller_manager = ControllerManager()
+        except Exception:
+            controller_manager = None
 
     now = time.perf_counter()
     if not library.has_songs():
@@ -164,6 +174,7 @@ def main() -> None:
         game.start_round(now)
 
     running = True
+    previous_state = game.state
     while running:
         now = time.perf_counter()
         for event in pygame.event.get():
@@ -184,11 +195,26 @@ def main() -> None:
                     elif action.action == "skip":
                         game.skip_round(now)
 
+        if controller_manager is not None:
+            for action in controller_manager.poll(now):
+                game.register_vote(action.player_index, action.choice, now)
+
         game.update(now)
+        if controller_manager is not None and game.state != previous_state:
+            if game.state == "VOTING":
+                controller_manager.send_all("RESET")
+            elif game.state == "REVEAL" and game.current_song is not None:
+                if game.current_song.category == "Silicon":
+                    controller_manager.send_all("WIN_SILICON")
+                else:
+                    controller_manager.send_all("WIN_SOUL")
+        previous_state = game.state
         ui.draw(game, now)
         clock.tick(config.FPS)
 
     audio.stop_music()
+    if controller_manager is not None:
+        controller_manager.close()
     pygame.quit()
 
 

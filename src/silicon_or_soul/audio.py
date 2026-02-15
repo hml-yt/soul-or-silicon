@@ -81,4 +81,3 @@ class AudioManager:
         if length <= snippet:
             return 0.0
         return self.rng.uniform(0.0, max(0.0, length - snippet))
-

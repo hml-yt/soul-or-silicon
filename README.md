@@ -83,7 +83,30 @@ Run the module:
 python -m silicon_or_soul
 ```
 
-### 6. MP3 Notes (Raspberry Pi)
+### 6. Arduino Controller Setup (PLAYER_1..PLAYER_3)
+
+The game now supports up to 3 USB serial controllers using the firmware in `arduino/sketch_controller/sketch_controller.ino`.
+
+1. Flash each board with a unique `PLAYER_ID` in the sketch:
+   - Board A: `PLAYER_1`
+   - Board B: `PLAYER_2`
+   - Board C: `PLAYER_3`
+2. Plug boards into the host machine (Pi/Mac) over USB.
+3. Start the game normally (`python -m silicon_or_soul`).
+
+At runtime the game auto-discovers controllers and uses this serial protocol:
+
+- Host -> controller:
+  - `WHO_ARE_YOU?` (handshake; board replies with its `PLAYER_ID`)
+  - `RESET` (sent when a new voting window opens)
+  - `WIN_SILICON` / `WIN_SOUL` (sent on reveal so matching winners flash)
+- Controller -> host:
+  - `PLAYER_1` / `PLAYER_2` / `PLAYER_3`
+  - `VOTE:SILICON` / `VOTE:SOUL`
+
+Keyboard voting still works as a fallback, so you can run without hardware connected.
+
+### 7. MP3 Notes (Raspberry Pi)
 
 If `.mp3` playback fails on your Pi (SDL_mixer build issues), convert tracks to `.ogg` or `.wav` and re-scan the `songs/` folders.
 This project is a custom-built, interactive game show system designed for your YouTube channel, **Hacking Modern Life**. The concept is **"Silicon or Soul,"** where contestants listen to a piece of music and guess whether it was composed by Artificial Intelligence ("Silicon") or a human musician ("Soul").

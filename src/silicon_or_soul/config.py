@@ -70,6 +70,15 @@ HOST_KEYS = {
     "quit": pygame.K_q,
 }
 
+# ---------------------------------------------------------------------------
+# External Controllers (Arduino over USB serial)
+# ---------------------------------------------------------------------------
+CONTROLLERS_ENABLED = True
+CONTROLLER_BAUDRATE = 9600
+CONTROLLER_SCAN_INTERVAL_SECONDS = 1.5
+CONTROLLER_HANDSHAKE_TIMEOUT_SECONDS = 0.75
+CONTROLLER_HANDSHAKE_COMMAND = "WHO_ARE_YOU?"
+
 SOUND_FILES = {
     "start": "start.wav",
     "lock_in": "lock_in.wav",
