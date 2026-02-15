@@ -51,7 +51,7 @@ PEDESTAL_GAP = 80                    # gap between podiums
 # Scoring
 # ---------------------------------------------------------------------------
 SPEED_POINTS_MIN = 1
-SPEED_POINTS_MAX = 3
+SPEED_POINTS_MAX = 5
 SPEED_POINTS_EXP = 0.5
 WRONG_ANSWER_PENALTY = 1
 
@@ -70,9 +70,9 @@ RECENT_TRACK_MEMORY = 3
 # Players
 # ---------------------------------------------------------------------------
 PLAYER_CONFIG = [
-    {"name": "Player 1", "keys": {"silicon": pygame.K_a, "soul": pygame.K_s}},
-    {"name": "Player 2", "keys": {"silicon": pygame.K_d, "soul": pygame.K_f}},
-    {"name": "Player 3", "keys": {"silicon": pygame.K_g, "soul": pygame.K_h}},
+    {"name": "David", "keys": {"silicon": pygame.K_a, "soul": pygame.K_s}},
+    {"name": "Jelena", "keys": {"silicon": pygame.K_d, "soul": pygame.K_f}},
+    # {"name": "Player 3", "keys": {"silicon": pygame.K_g, "soul": pygame.K_h}},
 ]
 
 HOST_KEYS = {

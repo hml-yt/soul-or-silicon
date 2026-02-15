@@ -156,7 +156,11 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _wait_for_any_key(screen: pygame.Surface, clock: pygame.time.Clock) -> bool:
+def _wait_for_any_key(
+    screen: pygame.Surface,
+    clock: pygame.time.Clock,
+    controller_manager: "ControllerManager | None" = None,
+) -> bool:
     fonts = [
         pygame.font.SysFont(name, 82) for name in config.FONT_NAMES
     ]
@@ -165,6 +169,11 @@ def _wait_for_any_key(screen: pygame.Surface, clock: pygame.time.Clock) -> bool:
     pygame.event.clear()
 
     while True:
+        if controller_manager is not None:
+            # Any controller action counts as "any key".
+            if controller_manager.drain_actions():
+                return True
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
@@ -204,8 +213,24 @@ def main() -> None:
         pygame.init()
         pygame.display.set_caption("Silicon Or Soul")
         clock = pygame.time.Clock()
+
+        controller_manager = None
+        if config.CONTROLLERS_ENABLED and ControllerManager is not None:
+            try:
+                controller_manager = ControllerManager()
+            except Exception:
+                if config.CONTROLLER_DEBUG:
+                    logging.getLogger(__name__).exception("failed to initialize ControllerManager")
+                controller_manager = None
+        elif config.CONTROLLER_DEBUG and config.CONTROLLERS_ENABLED and ControllerManager is None:
+            logging.getLogger(__name__).warning(
+                "controllers enabled but ControllerManager is unavailable (is pyserial installed?)"
+            )
+
         if intro_played:
-            if not _wait_for_any_key(screen, clock):
+            if not _wait_for_any_key(screen, clock, controller_manager):
+                if controller_manager is not None:
+                    controller_manager.close()
                 pygame.quit()
                 return
 
@@ -223,18 +248,6 @@ def main() -> None:
             game.set_player_names(player_names)
         ui = UI(screen)
         input_manager = InputManager()
-        controller_manager = None
-        if config.CONTROLLERS_ENABLED and ControllerManager is not None:
-            try:
-                controller_manager = ControllerManager()
-            except Exception:
-                if config.CONTROLLER_DEBUG:
-                    logging.getLogger(__name__).exception("failed to initialize ControllerManager")
-                controller_manager = None
-        elif config.CONTROLLER_DEBUG and config.CONTROLLERS_ENABLED and ControllerManager is None:
-            logging.getLogger(__name__).warning(
-                "controllers enabled but ControllerManager is unavailable (is pyserial installed?)"
-            )
 
         now = time.perf_counter()
         if not library.has_songs():
