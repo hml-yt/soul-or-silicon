@@ -35,8 +35,8 @@ The game engine now runs as a modern Python package under `src/` and is optimize
   * Player 2: `D` (Silicon), `F` (Soul)
   * Player 3: `G` (Silicon), `H` (Soul)
 * Host keys:
-  * `P`: Pause/Resume
-  * `N`: Skip song / next round
+  * `P` or `B`: Pause/Resume
+  * `N` or `Right Arrow`: Skip song / next round
   * `Q` or `ESC`: Quit
 
 * **Visual & Audio Feedback:**
@@ -82,6 +82,10 @@ Run the module:
 ```
 python -m silicon_or_soul
 ```
+
+For startup intro playback, the app uses `ffplay` (part of FFmpeg) to render
+`video/intro-1440p.mp4` fullscreen via SDL. Ensure `ffmpeg`/`ffplay` is
+installed on the system.
 
 ### 6. Arduino Controller Setup (PLAYER_1..PLAYER_3)
 

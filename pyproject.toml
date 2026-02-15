@@ -5,8 +5,8 @@ description = "Silicon or Soul game show engine"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-  "pygame",
-  "pyserial",
+    "pygame",
+    "pyserial",
 ]
 
 [build-system]

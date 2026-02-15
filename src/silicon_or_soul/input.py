@@ -30,7 +30,9 @@ class InputManager:
                 return VoteAction(player_index=idx, choice="Soul")
 
         for action, host_key in config.HOST_KEYS.items():
-            if key == host_key:
+            if isinstance(host_key, int) and key == host_key:
+                return HostAction(action=action)
+            if not isinstance(host_key, int) and key in host_key:
                 return HostAction(action=action)
         return None
 

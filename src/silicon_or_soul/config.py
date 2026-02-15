@@ -76,8 +76,8 @@ PLAYER_CONFIG = [
 ]
 
 HOST_KEYS = {
-    "pause": pygame.K_p,
-    "skip": pygame.K_n,
+    "pause": (pygame.K_p, pygame.K_b),
+    "skip": (pygame.K_n, pygame.K_RIGHT),
     "quit": pygame.K_q,
 }
 
