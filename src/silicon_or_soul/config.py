@@ -92,7 +92,7 @@ CONTROLLER_HANDSHAKE_COMMAND = "WHO_ARE_YOU?"
 
 # Debug logging for controller discovery/handshake/votes.
 # Turn on when diagnosing USB serial issues.
-CONTROLLER_DEBUG = True
+CONTROLLER_DEBUG = False
 # Log every raw line received from controllers (can be noisy).
 CONTROLLER_DEBUG_RAW_LINES = False
 

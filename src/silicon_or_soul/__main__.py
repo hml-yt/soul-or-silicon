@@ -209,7 +209,7 @@ def main() -> None:
         game.start_round(now)
 
     running = True
-    previous_state = game.state
+    previous_state = ""
     while running:
         now = time.perf_counter()
         for event in pygame.event.get():
@@ -236,7 +236,9 @@ def main() -> None:
 
         game.update(now)
         if controller_manager is not None and game.state != previous_state:
-            if game.state == "VOTING":
+            if game.state == "CHOOSING":
+                controller_manager.send_all("CHOOSING")
+            elif game.state == "VOTING":
                 controller_manager.send_all("RESET")
             elif game.state == "REVEAL" and game.current_song is not None:
                 if game.current_song.category == "Silicon":

@@ -24,6 +24,10 @@ const int PIN_LED_SOUL    = D5;
 // --- GAME STATE ---
 String currentVote = "NONE";
 bool lockedIn = false;
+bool choosingAnimation = false;
+bool choosingSiliconOn = false;
+unsigned long choosingLastToggleAt = 0;
+const unsigned long CHOOSING_FLICKER_MS = 180;
 
 void setup() {
   Serial.begin(9600);
@@ -60,19 +64,30 @@ void loop() {
     if (cmd == "WHO_ARE_YOU?") {
       Serial.println(PLAYER_ID);
     }
+    else if (cmd == "CHOOSING") {
+      startChoosingAnimation();
+    }
     else if (cmd == "RESET") {
+      stopChoosingAnimation();
       resetRound();
     }
     else if (cmd == "WIN_SILICON") {
-       if (currentVote == "SILICON") triggerWinEffect(PIN_LED_SILICON);
+      stopChoosingAnimation();
+      triggerRevealEffect("SILICON");
     }
     else if (cmd == "WIN_SOUL") {
-       if (currentVote == "SOUL") triggerWinEffect(PIN_LED_SOUL);
+      stopChoosingAnimation();
+      triggerRevealEffect("SOUL");
     }
   }
 
+  // Choosing animation runs while the game is selecting the track.
+  if (choosingAnimation) {
+    updateChoosingAnimation();
+  }
+
   // 2. READ BUTTONS (Only if not locked in)
-  if (!lockedIn) {
+  if (!lockedIn && !choosingAnimation) {
     // Check Silicon (Active LOW)
     if (digitalRead(PIN_BTN_SILICON) == LOW) {
       lockVote("SILICON");
@@ -113,13 +128,71 @@ void resetRound() {
   digitalWrite(PIN_LED_SOUL, LOW);
 }
 
-void triggerWinEffect(int pin) {
-  // Flash the winner 5 times
+void startChoosingAnimation() {
+  choosingAnimation = true;
+  choosingSiliconOn = true;
+  choosingLastToggleAt = millis();
+  // Clear previous vote indication while the roulette/selection is running.
+  currentVote = "NONE";
+  lockedIn = false;
+  digitalWrite(PIN_LED_SILICON, HIGH);
+  digitalWrite(PIN_LED_SOUL, LOW);
+}
+
+void stopChoosingAnimation() {
+  choosingAnimation = false;
+  digitalWrite(PIN_LED_SILICON, LOW);
+  digitalWrite(PIN_LED_SOUL, LOW);
+}
+
+void updateChoosingAnimation() {
+  unsigned long now = millis();
+  if ((now - choosingLastToggleAt) < CHOOSING_FLICKER_MS) {
+    return;
+  }
+  choosingLastToggleAt = now;
+  choosingSiliconOn = !choosingSiliconOn;
+  digitalWrite(PIN_LED_SILICON, choosingSiliconOn ? HIGH : LOW);
+  digitalWrite(PIN_LED_SOUL, choosingSiliconOn ? LOW : HIGH);
+}
+
+void triggerRevealEffect(String correctVote) {
+  int correctPin = (correctVote == "SILICON") ? PIN_LED_SILICON : PIN_LED_SOUL;
+  int wrongPin = (correctVote == "SILICON") ? PIN_LED_SOUL : PIN_LED_SILICON;
+
+  bool votedCorrect = (currentVote == correctVote);
+  bool votedWrong = (currentVote != "NONE") && !votedCorrect;
+
+  // If player was wrong, keep their chosen button solid while the correct one flickers.
+  if (votedWrong) {
+    if (currentVote == "SILICON") {
+      digitalWrite(PIN_LED_SILICON, HIGH);
+      digitalWrite(PIN_LED_SOUL, LOW);
+    } else {
+      digitalWrite(PIN_LED_SILICON, LOW);
+      digitalWrite(PIN_LED_SOUL, HIGH);
+    }
+  } else {
+    digitalWrite(PIN_LED_SILICON, LOW);
+    digitalWrite(PIN_LED_SOUL, LOW);
+  }
+
+  // Flicker correct answer 5 times.
   for(int i=0; i<5; i++) {
-    digitalWrite(pin, LOW);
+    digitalWrite(correctPin, LOW);
+    if (votedWrong) digitalWrite(wrongPin, HIGH);
     delay(100);
-    digitalWrite(pin, HIGH);
+    digitalWrite(correctPin, HIGH);
+    if (votedWrong) digitalWrite(wrongPin, HIGH);
     delay(100);
   }
-  digitalWrite(pin, HIGH); // Keep it on for glory
+
+  // Final light state after reveal.
+  if (votedWrong) {
+    digitalWrite(correctPin, LOW);
+    digitalWrite(wrongPin, HIGH);
+  } else {
+    digitalWrite(correctPin, HIGH);
+    digitalWrite(wrongPin, LOW);
+  }
 }

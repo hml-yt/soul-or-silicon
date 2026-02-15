@@ -98,8 +98,9 @@ At runtime the game auto-discovers controllers and uses this serial protocol:
 
 - Host -> controller:
   - `WHO_ARE_YOU?` (handshake; board replies with its `PLAYER_ID`)
+  - `CHOOSING` (selection phase; both button LEDs flicker)
   - `RESET` (sent when a new voting window opens)
-  - `WIN_SILICON` / `WIN_SOUL` (sent on reveal so matching winners flash)
+  - `WIN_SILICON` / `WIN_SOUL` (sent on reveal; correct answer flickers for everyone)
 - Controller -> host:
   - `PLAYER_1` / `PLAYER_2` / `PLAYER_3`
   - `VOTE:SILICON` / `VOTE:SOUL`
