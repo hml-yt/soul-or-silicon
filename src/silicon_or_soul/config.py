@@ -79,6 +79,12 @@ CONTROLLER_SCAN_INTERVAL_SECONDS = 1.5
 CONTROLLER_HANDSHAKE_TIMEOUT_SECONDS = 0.75
 CONTROLLER_HANDSHAKE_COMMAND = "WHO_ARE_YOU?"
 
+# Debug logging for controller discovery/handshake/votes.
+# Turn on when diagnosing USB serial issues.
+CONTROLLER_DEBUG = True
+# Log every raw line received from controllers (can be noisy).
+CONTROLLER_DEBUG_RAW_LINES = False
+
 SOUND_FILES = {
     "start": "start.wav",
     "lock_in": "lock_in.wav",

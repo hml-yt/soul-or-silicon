@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 from pathlib import Path
 import sys
@@ -38,13 +39,32 @@ from . import config
 from .audio import AudioManager
 try:
     from .controllers import ControllerManager
-except Exception:  # pragma: no cover - optional hardware dependency
+except Exception as e:  # pragma: no cover - optional hardware dependency
     ControllerManager = None  # type: ignore[assignment]
+    _CONTROLLER_IMPORT_ERROR = True
+    _CONTROLLER_IMPORT_ERROR_MESSAGE = f"{type(e).__name__}: {e}"
+else:
+    _CONTROLLER_IMPORT_ERROR = False
+    _CONTROLLER_IMPORT_ERROR_MESSAGE = ""
 from .game import Game
 from .input import HostAction, InputManager, VoteAction
 from .logging_jsonl import RoundLogger
 from .songs import SongLibrary
 from .ui import UI
+
+
+def _setup_logging() -> None:
+    # Keep logging quiet by default; only enable verbose controller logs when asked.
+    if not config.CONTROLLER_DEBUG:
+        return
+    # Force a predictable console logger so DEBUG output always shows up, even if
+    # another library configured logging earlier.
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s.%(msecs)03d %(levelname)s %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+        force=True,
+    )
 
 
 def _create_screen() -> pygame.Surface:
@@ -137,6 +157,15 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
 
 def main() -> None:
     args = _parse_args(sys.argv[1:])
+    _setup_logging()
+    if config.CONTROLLER_DEBUG:
+        logging.getLogger(__name__).debug(
+            "debug logging enabled (controllers_enabled=%s, controllers_import_ok=%s)",
+            config.CONTROLLERS_ENABLED,
+            not _CONTROLLER_IMPORT_ERROR,
+        )
+        if _CONTROLLER_IMPORT_ERROR:
+            logging.getLogger(__name__).debug("controllers import error: %s", _CONTROLLER_IMPORT_ERROR_MESSAGE)
 
     # Note: `_create_screen()` may need to pick/initialize an SDL video driver on
     # console-only Linux systems, so we do it before initializing everything.
@@ -164,7 +193,13 @@ def main() -> None:
         try:
             controller_manager = ControllerManager()
         except Exception:
+            if config.CONTROLLER_DEBUG:
+                logging.getLogger(__name__).exception("failed to initialize ControllerManager")
             controller_manager = None
+    elif config.CONTROLLER_DEBUG and config.CONTROLLERS_ENABLED and ControllerManager is None:
+        logging.getLogger(__name__).warning(
+            "controllers enabled but ControllerManager is unavailable (is pyserial installed?)"
+        )
 
     now = time.perf_counter()
     if not library.has_songs():
@@ -196,7 +231,7 @@ def main() -> None:
                         game.skip_round(now)
 
         if controller_manager is not None:
-            for action in controller_manager.poll(now):
+            for action in controller_manager.drain_actions():
                 game.register_vote(action.player_index, action.choice, now)
 
         game.update(now)
