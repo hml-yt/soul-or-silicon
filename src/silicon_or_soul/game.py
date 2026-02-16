@@ -47,7 +47,18 @@ class Game:
         self.game_over_started_at = 0.0
 
         self.paused = False
-        self.pause_started_at = 0.0
+        self.pause_started_at_real = 0.0
+        self.pause_total_seconds = 0.0
+
+    def effective_now(self, real_now: float) -> float:
+        """
+        Return a pause-aware time value suitable for all game timers/animations.
+
+        While paused, this value does not advance.
+        """
+        if self.paused:
+            return self.pause_started_at_real - self.pause_total_seconds
+        return real_now - self.pause_total_seconds
 
     def set_player_names(self, names: list[str]) -> None:
         """
@@ -96,6 +107,8 @@ class Game:
         self.voting_open_time = now
 
     def register_vote(self, player_index: int, choice: str, now: float) -> None:
+        if self.paused:
+            return
         if self.state != "VOTING":
             return
         if not (0 <= player_index < len(self.players)):
@@ -135,19 +148,17 @@ class Game:
     def toggle_pause(self, now: float) -> None:
         if self.state == "ERROR":
             return
+        if self.state == "VOTING":
+            return
         if not self.paused:
             self.paused = True
-            self.pause_started_at = now
+            self.pause_started_at_real = now
             self.audio.pause_music()
             return
 
+        # Resume.
         self.paused = False
-        pause_delta = now - self.pause_started_at
-        self.choosing_started_at += pause_delta
-        self.voting_open_time += pause_delta
-        self.pre_reveal_started_at += pause_delta
-        self.reveal_end_time += pause_delta
-        self.intermission_end_time += pause_delta
+        self.pause_total_seconds += max(0.0, now - self.pause_started_at_real)
         self.audio.resume_music()
 
     def skip_round(self, now: float) -> None:

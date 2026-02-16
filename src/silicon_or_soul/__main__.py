@@ -249,7 +249,8 @@ def main() -> None:
         ui = UI(screen)
         input_manager = InputManager()
 
-        now = time.perf_counter()
+        real_now = time.perf_counter()
+        now = game.effective_now(real_now)
         if not library.has_songs():
             game.state = "ERROR"
             game.error_message = "No songs found. Add files to songs/ai and songs/human."
@@ -259,13 +260,19 @@ def main() -> None:
         running = True
         previous_state = ""
         while running:
-            now = time.perf_counter()
+            real_now = time.perf_counter()
+            now = game.effective_now(real_now)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         running = False
+                        continue
+                    # On the GAME OVER screen, treat "b" as restart (even though
+                    # it's a pause key during normal gameplay).
+                    if game.state == "GAME_OVER" and event.key == pygame.K_b:
+                        game.skip_round(now)
                         continue
                     action = input_manager.handle_key(event.key)
                     if isinstance(action, VoteAction):
@@ -274,7 +281,9 @@ def main() -> None:
                         if action.action == "quit":
                             running = False
                         elif action.action == "pause":
-                            game.toggle_pause(now)
+                            game.toggle_pause(real_now)
+                            # Pausing/unpausing changes effective time immediately.
+                            now = game.effective_now(real_now)
                         elif action.action == "skip":
                             game.skip_round(now)
 

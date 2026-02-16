@@ -728,7 +728,8 @@ class UI:
         alpha = min(255, int(hint_elapsed / 0.8 * 255))
         if alpha < 5:
             return
-        hint_surf = self.font_small.render("PRESS N / RIGHT ARROW TO RESTART", True,
+        # Keep the on-screen hint minimal (even if other keys are supported).
+        hint_surf = self.font_small.render("Press N", True,
                                            config.COLORS["muted"])
         hint_surf.set_alpha(alpha)
         self.screen.blit(hint_surf,
