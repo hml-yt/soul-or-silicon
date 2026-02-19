@@ -218,8 +218,8 @@ def main() -> None:
             )
 
         # Show the same "PRESS ANY KEY" pygame screen used by gameplay flow.
-        pre_screen = _create_screen()
         pygame.init()
+        pre_screen = _create_screen()
         pygame.display.set_caption("Silicon Or Soul")
         pre_clock = pygame.time.Clock()
         if not _wait_for_any_key(pre_screen, pre_clock, controller_manager):
@@ -227,14 +227,16 @@ def main() -> None:
                 controller_manager.close()
             pygame.quit()
             return
-        pygame.quit()
+        # Let ffplay take over the display for intro playback without fully
+        # shutting down pygame runtime state.
+        pygame.display.quit()
 
         play_intro_video()
 
         # Note: `_create_screen()` may need to pick/initialize an SDL video driver on
         # console-only Linux systems, so we do it before initializing everything.
-        screen = _create_screen()
         pygame.init()
+        screen = _create_screen()
         pygame.display.set_caption("Silicon Or Soul")
         clock = pygame.time.Clock()
 
