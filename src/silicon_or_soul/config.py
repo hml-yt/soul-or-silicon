@@ -26,7 +26,7 @@ VOTING_TIMEOUT_SECONDS = 50.0
 PRE_REVEAL_DURATION_SECONDS = 2.5
 REVEAL_DURATION_SECONDS = 5.0
 INTERMISSION_SECONDS = 2.0
-TOTAL_ROUNDS = 6
+TOTAL_ROUNDS = 10
 
 # ---------------------------------------------------------------------------
 # Animation Timing
@@ -70,9 +70,9 @@ RECENT_TRACK_MEMORY = 3
 # Players
 # ---------------------------------------------------------------------------
 PLAYER_CONFIG = [
-    {"name": "David", "keys": {"silicon": pygame.K_a, "soul": pygame.K_s}},
-    {"name": "Jelena", "keys": {"silicon": pygame.K_d, "soul": pygame.K_f}},
-    # {"name": "Player 3", "keys": {"silicon": pygame.K_g, "soul": pygame.K_h}},
+    {"name": "Noah", "keys": {"silicon": pygame.K_a, "soul": pygame.K_s}},
+    {"name": "Jackson", "keys": {"silicon": pygame.K_d, "soul": pygame.K_f}},
+    {"name": "Jelena", "keys": {"silicon": pygame.K_g, "soul": pygame.K_h}},
 ]
 
 HOST_KEYS = {
