@@ -798,8 +798,9 @@ class UI:
         center_x = card_x + card_w // 2
         self._draw_vote_indicators(player, center_x, y + card_h // 2, game, now)
 
-        # Locked-in points (for correct answers) during voting
-        if game.state == "VOTING" and player.vote_time is not None:
+        # Keep locked-in points visible from vote lock through reveal.
+        show_locked_points = game.state in {"VOTING", "PRE_REVEAL", "REVEAL", "INTERMISSION"}
+        if show_locked_points and player.vote_time is not None:
             locked_points = game.speed_points_for_vote_time(player.vote_time)
             locked_x = card_x + card_w - 260
             locked_label = self.font_tiny.render("LOCKED", True, config.COLORS["muted"])
