@@ -83,11 +83,79 @@ Run the module:
 python -m silicon_or_soul
 ```
 
+Startup behavior:
+- On launch, the game now shows a console boot splash (`SILICON OR SOUL`) and waits.
+- Press any keyboard key or any connected controller button to continue.
+- Press `ESC` on keyboard to quit before intro/game start.
+
 For startup intro playback, the app uses `ffplay` (part of FFmpeg) to render
 `video/intro-1440p.mp4` fullscreen via SDL. Ensure `ffmpeg`/`ffplay` is
 installed on the system.
 
-### 6. Arduino Controller Setup (PLAYER_1..PLAYER_3)
+### 6. Start on Boot (Raspberry Pi kiosk on tty1)
+
+This repo includes a systemd unit that starts the game automatically on boot and
+attaches it to `/dev/tty1` (kiosk style, no login prompt on tty1 while active).
+
+Install and enable:
+```
+bash scripts/install-kiosk-service.sh
+```
+
+Optional (disable tty1 getty explicitly):
+```
+DISABLE_GETTY_TTY1=1 bash scripts/install-kiosk-service.sh
+```
+
+Manual install (without helper script):
+```
+sudo install -D -m 0644 deploy/systemd/silicon-or-soul.service /etc/systemd/system/silicon-or-soul.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now silicon-or-soul.service
+```
+
+Check status:
+```
+sudo systemctl status silicon-or-soul.service --no-pager
+```
+
+Disable/uninstall:
+```
+sudo systemctl disable --now silicon-or-soul.service
+sudo rm -f /etc/systemd/system/silicon-or-soul.service
+sudo systemctl daemon-reload
+```
+
+### 7. Hide Boot Messages + Plymouth Splash
+
+If you want a true boot splash (instead of app-level console text), use
+Plymouth and quiet kernel flags:
+
+```
+bash scripts/setup-boot-splash.sh
+sudo reboot
+```
+
+What this does:
+- Installs `plymouth` and `plymouth-themes`
+- Installs a custom `Silicon or Soul` plymouth theme from `deploy/plymouth/`
+- Adds quiet/splash kernel args in `cmdline.txt`
+- Sets `disable_splash=1` in `config.txt` to hide firmware splash
+- Regenerates initramfs and sets the default theme
+
+Revert:
+```
+bash scripts/revert-boot-splash.sh
+sudo reboot
+```
+
+Notes:
+- The setup script backs up your original boot files to
+  `/etc/silicon-or-soul/boot-backups/`.
+- This is independent from the in-game `boot.py` wait screen; Plymouth runs
+  earlier during OS boot.
+
+### 8. Arduino Controller Setup (PLAYER_1..PLAYER_3)
 
 The game now supports up to 3 USB serial controllers using the firmware in `arduino/sketch_controller/sketch_controller.ino`.
 
@@ -111,7 +179,7 @@ At runtime the game auto-discovers controllers and uses this serial protocol:
 
 Keyboard voting still works as a fallback, so you can run without hardware connected.
 
-### 7. MP3 Notes (Raspberry Pi)
+### 9. MP3 Notes (Raspberry Pi)
 
 If `.mp3` playback fails on your Pi (SDL_mixer build issues), convert tracks to `.ogg` or `.wav` and re-scan the `songs/` folders.
 This project is a custom-built, interactive game show system designed for your YouTube channel, **Hacking Modern Life**. The concept is **"Silicon or Soul,"** where contestants listen to a piece of music and guess whether it was composed by Artificial Intelligence ("Silicon") or a human musician ("Soul").

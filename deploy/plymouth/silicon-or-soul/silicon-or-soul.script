@@ -1,0 +1,18 @@
+Window.SetBackgroundTopColor(0.02, 0.03, 0.08);
+Window.SetBackgroundBottomColor(0.00, 0.00, 0.02);
+
+screenWidth = Window.GetWidth();
+screenHeight = Window.GetHeight();
+
+titleImage = Image.Text("SILICON OR SOUL", 0.95, 0.96, 1.0, 1.0, "Sans Bold 32", "center");
+subtitleImage = Image.Text("Booting game system...", 0.55, 0.62, 0.80, 1.0, "Sans 14", "center");
+
+titleSprite = Sprite();
+titleSprite.SetImage(titleImage);
+titleSprite.SetX((screenWidth - titleImage.GetWidth()) / 2);
+titleSprite.SetY((screenHeight / 2) - 36);
+
+subtitleSprite = Sprite();
+subtitleSprite.SetImage(subtitleImage);
+subtitleSprite.SetX((screenWidth - subtitleImage.GetWidth()) / 2);
+subtitleSprite.SetY((screenHeight / 2) + 12);

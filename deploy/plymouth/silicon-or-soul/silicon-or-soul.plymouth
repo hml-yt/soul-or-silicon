@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Silicon or Soul
+Description=Silicon or Soul branded boot splash
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/silicon-or-soul
+ScriptFile=/usr/share/plymouth/themes/silicon-or-soul/silicon-or-soul.script

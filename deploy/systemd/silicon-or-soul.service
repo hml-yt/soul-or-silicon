@@ -1,0 +1,24 @@
+[Unit]
+Description=Silicon or Soul kiosk game
+After=systemd-user-sessions.service sound.target
+Wants=sound.target
+Conflicts=getty@tty1.service
+
+[Service]
+Type=simple
+User=nethunter
+WorkingDirectory=/home/nethunter/silicon-or-soul
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /home/nethunter/silicon-or-soul/main.py
+Restart=on-failure
+RestartSec=2
+StandardInput=tty
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+
+[Install]
+WantedBy=multi-user.target

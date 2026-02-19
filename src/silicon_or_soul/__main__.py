@@ -33,8 +33,10 @@ def _setup_sdl_env_for_console() -> None:
 
 _setup_sdl_env_for_console()
 
+os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame
 
+from .boot import wait_for_boot_start
 from . import config
 from .audio import AudioManager
 try:
@@ -156,42 +158,6 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _wait_for_any_key(
-    screen: pygame.Surface,
-    clock: pygame.time.Clock,
-    controller_manager: "ControllerManager | None" = None,
-) -> bool:
-    fonts = [
-        pygame.font.SysFont(name, 82) for name in config.FONT_NAMES
-    ]
-    title_font = next((f for f in fonts if f.get_height() > 0), pygame.font.Font(None, 82))
-    subtitle_font = pygame.font.Font(None, 52)
-    pygame.event.clear()
-
-    while True:
-        if controller_manager is not None:
-            # Any controller action counts as "any key".
-            if controller_manager.drain_actions():
-                return True
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return False
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    return False
-                return True
-
-        screen.fill((4, 6, 16))
-        w, h = screen.get_size()
-        title = title_font.render("PRESS ANY KEY", True, config.COLORS["text"])
-        subtitle = subtitle_font.render("to start the show", True, config.COLORS["muted"])
-        screen.blit(title, title.get_rect(center=(w // 2, h // 2 - 22)))
-        screen.blit(subtitle, subtitle.get_rect(center=(w // 2, h // 2 + 44)))
-        pygame.display.flip()
-        clock.tick(config.FPS)
-
-
 def main() -> None:
     try:
         args = _parse_args(sys.argv[1:])
@@ -204,15 +170,6 @@ def main() -> None:
             )
             if _CONTROLLER_IMPORT_ERROR:
                 logging.getLogger(__name__).debug("controllers import error: %s", _CONTROLLER_IMPORT_ERROR_MESSAGE)
-
-        intro_played = play_intro_video()
-
-        # Note: `_create_screen()` may need to pick/initialize an SDL video driver on
-        # console-only Linux systems, so we do it before initializing everything.
-        screen = _create_screen()
-        pygame.init()
-        pygame.display.set_caption("Silicon Or Soul")
-        clock = pygame.time.Clock()
 
         controller_manager = None
         if config.CONTROLLERS_ENABLED and ControllerManager is not None:
@@ -227,12 +184,19 @@ def main() -> None:
                 "controllers enabled but ControllerManager is unavailable (is pyserial installed?)"
             )
 
-        if intro_played:
-            if not _wait_for_any_key(screen, clock, controller_manager):
-                if controller_manager is not None:
-                    controller_manager.close()
-                pygame.quit()
-                return
+        if not wait_for_boot_start(controller_manager):
+            if controller_manager is not None:
+                controller_manager.close()
+            return
+
+        play_intro_video()
+
+        # Note: `_create_screen()` may need to pick/initialize an SDL video driver on
+        # console-only Linux systems, so we do it before initializing everything.
+        screen = _create_screen()
+        pygame.init()
+        pygame.display.set_caption("Silicon Or Soul")
+        clock = pygame.time.Clock()
 
         audio = AudioManager()
         library = SongLibrary()
