@@ -229,6 +229,12 @@ def main() -> None:
             return
         # Let ffplay take over the display for intro playback without fully
         # shutting down pygame runtime state.
+        #
+        # Important for kiosk mode on ALSA-only systems: pygame.init() can bring
+        # up the mixer and hold the audio device, which can make ffplay's intro
+        # video appear silent. Release mixer before handing off to ffplay.
+        if pygame.mixer.get_init() is not None:
+            pygame.mixer.quit()
         pygame.display.quit()
 
         play_intro_video()

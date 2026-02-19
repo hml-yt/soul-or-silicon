@@ -69,6 +69,10 @@ def play_intro_video(video_path: Path | None = None) -> bool:
             env["SDL_VIDEODRIVER"] = "kmsdrm"
         elif Path("/dev/fb0").exists():
             env["SDL_VIDEODRIVER"] = "fbcon"
+    if not under_desktop and not env.get("SDL_AUDIODRIVER"):
+        # Kiosk/service sessions usually do not run PulseAudio/PipeWire user
+        # daemons; prefer direct ALSA output for reliable intro sound.
+        env["SDL_AUDIODRIVER"] = "alsa"
 
     cmd = [
         ffplay,
@@ -84,7 +88,13 @@ def play_intro_video(video_path: Path | None = None) -> bool:
     ]
     try:
         _blank_console()
-        completed = subprocess.run(cmd, env=env, check=False)
+        completed = subprocess.run(
+            cmd,
+            env=env,
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
         return completed.returncode == 0
     except Exception:
         logging.getLogger(__name__).exception("ffplay intro playback failed")
